@@ -1,0 +1,6 @@
+{
+  "root_path" : "project",
+  "url" : "http://localhost:8002/api/v1/generate",
+  "username" : "admin",
+  "password" : "123456789"
+}
