@@ -1,30 +1,16 @@
 
 
-# Django Framework Starter Template
+# Django Framework CRUD generator for client
 
-project is a _short description_. It is built with [Python][0] using the [Django Web Framework][1].
+this is CRUD generator client
 
 ## Installation
-    django-admin startproject --template https://github.com//fahmihidayah/djarter/archive/master.zip django_project .
+    pip install request
+    just copy generator_client.py and copy configuration.json
 ### Quick start
+    To generate CRUD just run :
+    python generator_client.py
 
-To set up a development environment quickly, first install Python 3. It
-comes with virtualenv built-in. So create a virtual env by:
-
-    1. `$ python3 -m venv project`
-    2. `$ . project/bin/activate`
-
-Install all dependencies:
-
-    pip install -r requirements.txt
-
-Run migrations:
-
-    python manage.py migrate
-
-### Detailed instructions
-
-Take a look at the docs for more information.
-
+    to ignore exsiting model add comment : # IGNORE-GENERATE
 [0]: https://www.python.org/
 [1]: https://www.djangoproject.com/
