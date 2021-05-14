@@ -2,16 +2,17 @@ import requests
 import pathlib
 import os
 import json
+import jsonpickle
 
 GENERATOR_CLIENT_LOG = 'Client Log : '
 
 
-# FILE_LIST = ['admin', 'apps', 'forms', 'tables', 'urls', 'views', ]
-#
-# HTML_FILE_LIST = ['confirm_delete', 'detail', 'form', 'list']
-
 def log(value):
     print('{} {}'.format(GENERATOR_CLIENT_LOG, value))
+
+
+def obj_dict(obj):
+    return obj.to_dict()
 
 
 def read_file(file_name, parent_path: str = None):
@@ -31,14 +32,18 @@ def write_string(path, file_name, value):
     py_file.close()
 
 
-class TargetModel:
+class TargetModel(object):
 
     def __init__(self):
+        self.id = 0
         self.model_str = ''
         self.directory = ''
         self.result = None
         self.app_dir = ''
         self.template_dir = ''
+
+    def get_app_name(self) -> str:
+        return self.result['name'].lower()
 
     def set_app_dir(self, directory):
         split_result = directory.split('/')
@@ -56,6 +61,15 @@ class TargetModel:
 
     def get_full_template_dir(self):
         return pathlib.Path(self.template_dir) / self.app_dir
+
+    def to_dict(self):
+        return {
+            'model_str': self.model_str,
+            'directory': self.directory,
+            'result' : self.result,
+            'app_dir': self.app_dir,
+            'template_dir' : self.template_dir
+        }
 
 
 class GeneratorClient:
@@ -82,6 +96,7 @@ class GeneratorClient:
         return root_path
 
     def read_model(self):
+        id = 0
         list_target_models = list()
         root_path = pathlib.Path.cwd() / self.root_path
         if os.path.isdir(root_path):
@@ -91,15 +106,18 @@ class GeneratorClient:
                     model_str = read_file('models.py', dirpath)
                     if 'IGNORE-GENERATE' not in model_str:
                         target_model = TargetModel()
+                        target_model.id = id
                         target_model.model_str = model_str
                         target_model.directory = dirpath
                         target_model.set_app_dir(dirpath)
                         list_target_models.append(target_model)
+                        id += 1
             return list_target_models
         else:
             log('Exception : directory {} not found'.format(self.root_path))
 
     def write_target_model(self, target_model: TargetModel):
+
         for file_item in target_model.result['result_files']:
             write_string(target_model.directory, '{}.py'.format(file_item['name']), file_item['value'])
 
@@ -107,7 +125,7 @@ class GeneratorClient:
 
         for file_item in target_model.result['template_files']:
             write_string(target_model.get_full_template_dir(),
-                         '{}_{}.html'.format(target_model.app_dir, file_item['name']), file_item['value'])
+                         '{}_{}.html'.format(target_model.result['name'].lower(), file_item['name']), file_item['value'])
 
     def write_model(self):
         for target_model in self.target_models:
@@ -115,6 +133,28 @@ class GeneratorClient:
             self.write_target_model(target_model)
 
     def generate_model(self):
+        self.generate_model_v2()
+
+    def generate_model_v2(self):
+        self.target_models = self.read_model()
+        list_model_str = [{
+            'id' : tm.id,
+            'model_str' : tm.model_str
+        } for tm in self.target_models]
+        response = requests.post(self.url,
+                                 data= {
+                                     'username': self.username,
+                                     'password': self.password,
+                                     'models': json.dumps(list_model_str)
+                                 })
+        for data_model in jsonpickle.loads(response.text):
+            for target_model in self.target_models:
+                if target_model.id == data_model['id']:
+                    target_model.result = data_model['model_code']
+        self.write_model()
+
+
+    def generate_model_v1(self):
         self.target_models = self.read_model()
         for target_model in self.target_models:
             response = requests.post(self.url, data={'username': self.username, 'password': self.password,
@@ -125,11 +165,6 @@ class GeneratorClient:
 
 
 def test():
-    # target_model = TargetModel()
-    # target_model.set_app_dir("/Users/fahmi/Documents/Pycharm/generator_client/project/todo")
-    # print(target_model.app_dir)
-    # print(target_model.template_dir)
-
     generator_client: GeneratorClient = GeneratorClient()
     generator_client.initial_configuration()
     # generator_client.read_model()
